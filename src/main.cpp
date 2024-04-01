@@ -38,8 +38,8 @@ typedef struct date {
 
 unsigned long lastTime = millis();
 int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-float temperature[10] = {1};
-float humidity[10] = {1};
+float temperature[20] = {0};
+float humidity[20] = {0};
 int tempHumIndex = 0;
 int hourDisplayMode = 0; // TODO 0 - 24h format, 1 - 12h format
 int mode = 1; // 0 - clock mode, 1 - temperature mode, 2 - alarm mode, 3 - settings mode
@@ -56,22 +56,23 @@ void updateSeconds();
 void measureTemperature();
 void changeMode();
 void displayTemperature();
-
+void displayTemperatureText();
+void displaySettings();
+void displayAlarm();
 
 void setup() {
   lcd.begin(16, 2);
   dht.begin();
+  lcd.clear();
   pinMode(BUZZER, OUTPUT);
   pinMode(SW0, INPUT_PULLUP);
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
   pinMode(SW3, INPUT_PULLUP);
   pinMode(TEMP_SENSOR, INPUT_PULLUP);
-  displayDateTime();
 }
 
 void loop() {
-  lcd.clear();
   if (digitalRead(SW3) == LOW) {
     changeMode();
   }
@@ -85,19 +86,32 @@ void loop() {
     }else{
       displaySeconds();
     }
-    delay(500);
     break;
   case 1: // temperature mode
     displayTemperature();
     break;
-  case 2:
+  case 2: // alarm mode
     break;
-  case 3:
+  case 3: // settings mode
     break;
   default:
     break;
   }
   delay(500);
+}
+
+void displaySettingsText() {
+  lcd.print("Settings");
+}
+
+void displayAlarmText() {
+  lcd.print("Alarm");
+}
+
+void displayTemperatureText() {
+  lcd.print("Temp: ");
+  lcd.setCursor(0, 1);
+  lcd.print("Hum: ");
 }
 
 void displayTemperature() {
@@ -108,11 +122,10 @@ void displayTemperature() {
   }
   temp /= 10;
   hum /= 10.0;
-  lcd.print("Temp: ");
+  lcd.setCursor(6, 0);
   lcd.print(temp);
   lcd.print("C");
-  lcd.setCursor(0, 1);
-  lcd.print("Hum: ");
+  lcd.setCursor(5, 1);
   lcd.print(hum);
   lcd.print("%");
 }
@@ -124,9 +137,24 @@ void measureTemperature() {
 }
 
 void changeMode() {
+  lcd.clear();
   mode = (mode + 1) % 4;
-  if(mode == 0) {
+  switch (mode)
+  {
+  case 0:
     displayDateTime();
+    break;
+  case 1:
+    displayTemperatureText();
+    break;
+  case 2:
+    displayAlarmText();
+    break;
+  case 3:
+    displaySettingsText();
+    break;
+  default:
+    break;
   }
 }
 
