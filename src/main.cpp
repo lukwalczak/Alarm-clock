@@ -21,11 +21,11 @@
 #define SW2 2 // save switch
 #define SW3 3 // change mode switch
 
-// Define the struct for the month
-typedef struct month {
-  int days;
-  char name[10];
-} month;
+typedef struct time {
+  int hours = 23;
+  int minutes = 59;
+  int seconds = 30;
+} time;
 
 // Define the struct for the date and time
 typedef struct date {
@@ -34,51 +34,75 @@ typedef struct date {
   int year = 2024;
 } date;
 
+unsigned long lastTime = millis();
+int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 int hourDisplayMode = 0; // 0 - 24h format, 1 - 12h format
 date d;
-unsigned long lastTime = millis();
+time t;
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
 
 void playSong();
-void displayDateTime(date d, unsigned long seconds);
-void displaySeconds(unsigned long seconds);
-void updateTime();
+void displayDateTime(date d, time t);
+void displaySeconds(time t);
+void updateTime(date *d, time *t);
+void updateSeconds(date *d, time *t);
 
 
 void setup() {
   lcd.begin(16, 2);
   lcd.clear();
-  displayDateTime(d, lastTime);
+  displayDateTime(d, t);
 }
 
 void loop() {
-  updateTime();
+  updateSeconds(&d, &t);
 }
 
 
-void updateTime(){
+void updateTime(date *d, time *t) {
+  t->minutes++;
+  if (t->minutes == 60) {
+    t->minutes = 0;
+    t->hours++;
+    if (t->hours == 24) {
+      t->hours = 0;
+      d->day++;
+      if (d->day > months[d->month - 1]) {
+        d->day = 1;
+        d->month++;
+        if (d->month > 12) {
+          d->month = 1;
+          d->year++;
+        }
+      }
+    }
+  }
+  displayDateTime(*d, *t);
+}
+
+void updateSeconds(date *d, time *t) {
   unsigned long currentTime = millis();
   if (currentTime - lastTime >= 1000) {
     lastTime = currentTime;
-    if (millis() / 1000 % 60 == 0){
-      displayDateTime(d, currentTime);
-    }
-    else {
-      displaySeconds(currentTime);
-    }
+    t->seconds++;
+    displaySeconds(*t);
   }
+  if(t->seconds == 60) {
+    t->seconds = 0;
+    updateTime(d,t);
+  } 
 }
 
 
-void displaySeconds(unsigned long miliseconds) {
+void displaySeconds(time t) {
   lcd.setCursor(12, 1);
-  if (miliseconds / 1000 % 60 < 10) {
+  if (t.seconds < 10) {
     lcd.print("0");
   }
-  lcd.print(miliseconds / 1000 % 60);
+  lcd.print(t.seconds);
 }
 
-void displayDateTime(date d, unsigned long miliseconds) {
+void displayDateTime(date d, time t) {
   lcd.clear();
   lcd.print("Date: ");
   if (d.day < 10) {
@@ -94,32 +118,18 @@ void displayDateTime(date d, unsigned long miliseconds) {
   lcd.print(d.year);
   lcd.setCursor(0, 1);
   lcd.print("Time: ");
-  int seconds = miliseconds / 1000;
-  int minutes = seconds / 60;
-  int hours = minutes / 60;
-  seconds = seconds % 60;
-  minutes = minutes % 60;
-  if (hourDisplayMode == 1) {
-    if (hours > 12) {
-      hours -= 12;
-      lcd.print("PM");
-    } else {
-      lcd.print("AM");
-    }
-  }
-  if (hours < 10) {
+  if (t.hours < 10) {
     lcd.print("0");
   }
-  lcd.print(hours);
+  lcd.print(t.hours);
   lcd.print(":");
-  if (minutes < 10) {
+  if (t.minutes < 10) {
     lcd.print("0");
   }
-  lcd.print(minutes);
+  lcd.print(t.minutes);
   lcd.print(":");
-  displaySeconds(miliseconds);
+  displaySeconds(t);
 }
-
 
 void playSong() {
   tone(BUZZER, 262, 200);
