@@ -38,11 +38,11 @@ typedef struct date {
 
 unsigned long lastTime = millis();
 int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-float temperature[10] = {0};
-float humidity[10] = {0};
+float temperature[10] = {1};
+float humidity[10] = {1};
 int tempHumIndex = 0;
 int hourDisplayMode = 0; // TODO 0 - 24h format, 1 - 12h format
-int mode = 0; // 0 - clock mode, 1 - temperature mode, 2 - alarm mode, 3 - settings mode
+int mode = 1; // 0 - clock mode, 1 - temperature mode, 2 - alarm mode, 3 - settings mode
 date d;
 time t;
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
@@ -66,12 +66,15 @@ void setup() {
   pinMode(SW1, INPUT_PULLUP);
   pinMode(SW2, INPUT_PULLUP);
   pinMode(SW3, INPUT_PULLUP);
-  pinMode(TEMP_SENSOR, INPUT);
+  pinMode(TEMP_SENSOR, INPUT_PULLUP);
   displayDateTime();
-  attachInterrupt(digitalPinToInterrupt(SW3), changeMode, RISING);
 }
 
 void loop() {
+  lcd.clear();
+  if (digitalRead(SW3) == LOW) {
+    changeMode();
+  }
   updateSeconds();
   measureTemperature();
   switch (mode)
@@ -82,10 +85,10 @@ void loop() {
     }else{
       displaySeconds();
     }
+    delay(500);
     break;
   case 1: // temperature mode
     displayTemperature();
-    delay(1000);
     break;
   case 2:
     break;
@@ -94,17 +97,17 @@ void loop() {
   default:
     break;
   }
+  delay(500);
 }
 
 void displayTemperature() {
-  float temp, hum;
+  float temp = 0, hum = 0;
   for(int i = 0; i < 10; i++){
     temp += temperature[i];
     hum += humidity[i];
   }
   temp /= 10;
-  hum /= 10;
-  lcd.clear();
+  hum /= 10.0;
   lcd.print("Temp: ");
   lcd.print(temp);
   lcd.print("C");
@@ -121,8 +124,10 @@ void measureTemperature() {
 }
 
 void changeMode() {
-  lcd.clear();
   mode = (mode + 1) % 4;
+  if(mode == 0) {
+    displayDateTime();
+  }
 }
 
 void updateTime() {
@@ -167,7 +172,6 @@ void displaySeconds() {
 }
 
 void displayDateTime() {
-  lcd.clear();
   lcd.print("Date: ");
   if (d.day < 10) {
     lcd.print("0");
