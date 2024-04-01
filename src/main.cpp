@@ -36,7 +36,8 @@ typedef struct date {
 
 unsigned long lastTime = millis();
 int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-int hourDisplayMode = 0; // 0 - 24h format, 1 - 12h format
+int hourDisplayMode = 0; // TODO 0 - 24h format, 1 - 12h format
+int mode = 0; // 0 - clock mode, 1 - temperature mode, 2 - alarm mode, 3 - settings mode
 date d;
 time t;
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
@@ -46,6 +47,7 @@ void displayDateTime(date d, time t);
 void displaySeconds(time t);
 void updateTime(date *d, time *t);
 void updateSeconds(date *d, time *t);
+void measureTemperature();
 
 
 void setup() {
@@ -56,6 +58,24 @@ void setup() {
 
 void loop() {
   updateSeconds(&d, &t);
+  switch (mode)
+  {
+  case 0:
+    if(t.seconds == 0) {
+      displayDateTime(d, t);
+    }else{
+      displaySeconds(t);
+    }
+    break;
+  case 1:
+    break;
+  case 2:
+    break;
+  case 3:
+    break;
+  default:
+    break;
+  }
 }
 
 
@@ -77,7 +97,6 @@ void updateTime(date *d, time *t) {
       }
     }
   }
-  displayDateTime(*d, *t);
 }
 
 void updateSeconds(date *d, time *t) {
@@ -85,7 +104,6 @@ void updateSeconds(date *d, time *t) {
   if (currentTime - lastTime >= 1000) {
     lastTime = currentTime;
     t->seconds++;
-    displaySeconds(*t);
   }
   if(t->seconds == 60) {
     t->seconds = 0;
