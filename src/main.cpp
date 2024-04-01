@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+#include <TimerOne.h>
+#include <DHT.h>
 
 // LCD pinout settings
 #define RS 12
@@ -30,44 +32,60 @@ typedef struct time {
 // Define the struct for the date and time
 typedef struct date {
   int day = 1;
-  int month = 1;
+  int month = 4;
   int year = 2024;
 } date;
 
 unsigned long lastTime = millis();
 int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+float temperature[10] = {0};
+float humidity[10] = {0};
+int tempHumIndex = 0;
 int hourDisplayMode = 0; // TODO 0 - 24h format, 1 - 12h format
 int mode = 0; // 0 - clock mode, 1 - temperature mode, 2 - alarm mode, 3 - settings mode
 date d;
 time t;
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
+DHT dht(TEMP_SENSOR, DHT11);
 
 void playSong();
-void displayDateTime(date d, time t);
-void displaySeconds(time t);
-void updateTime(date *d, time *t);
-void updateSeconds(date *d, time *t);
+void displayDateTime();
+void displaySeconds();
+void updateTime();
+void updateSeconds();
 void measureTemperature();
+void changeMode();
+void displayTemperature();
 
 
 void setup() {
   lcd.begin(16, 2);
-  lcd.clear();
-  displayDateTime(d, t);
+  dht.begin();
+  pinMode(BUZZER, OUTPUT);
+  pinMode(SW0, INPUT_PULLUP);
+  pinMode(SW1, INPUT_PULLUP);
+  pinMode(SW2, INPUT_PULLUP);
+  pinMode(SW3, INPUT_PULLUP);
+  pinMode(TEMP_SENSOR, INPUT);
+  displayDateTime();
+  attachInterrupt(digitalPinToInterrupt(SW3), changeMode, RISING);
 }
 
 void loop() {
-  updateSeconds(&d, &t);
+  updateSeconds();
+  measureTemperature();
   switch (mode)
   {
-  case 0:
+  case 0: // clock mode
     if(t.seconds == 0) {
-      displayDateTime(d, t);
+      displayDateTime();
     }else{
-      displaySeconds(t);
+      displaySeconds();
     }
     break;
-  case 1:
+  case 1: // temperature mode
+    displayTemperature();
+    delay(1000);
     break;
   case 2:
     break;
@@ -78,41 +96,69 @@ void loop() {
   }
 }
 
+void displayTemperature() {
+  float temp, hum;
+  for(int i = 0; i < 10; i++){
+    temp += temperature[i];
+    hum += humidity[i];
+  }
+  temp /= 10;
+  hum /= 10;
+  lcd.clear();
+  lcd.print("Temp: ");
+  lcd.print(temp);
+  lcd.print("C");
+  lcd.setCursor(0, 1);
+  lcd.print("Hum: ");
+  lcd.print(hum);
+  lcd.print("%");
+}
 
-void updateTime(date *d, time *t) {
-  t->minutes++;
-  if (t->minutes == 60) {
-    t->minutes = 0;
-    t->hours++;
-    if (t->hours == 24) {
-      t->hours = 0;
-      d->day++;
-      if (d->day > months[d->month - 1]) {
-        d->day = 1;
-        d->month++;
-        if (d->month > 12) {
-          d->month = 1;
-          d->year++;
+void measureTemperature() {
+  temperature[tempHumIndex] = dht.readTemperature();
+  humidity[tempHumIndex] = dht.readHumidity();
+  tempHumIndex = (tempHumIndex + 1) % 10;
+}
+
+void changeMode() {
+  lcd.clear();
+  mode = (mode + 1) % 4;
+}
+
+void updateTime() {
+  t.minutes++;
+  if (t.minutes == 60) {
+    t.minutes = 0;
+    t.hours++;
+    if (t.hours == 24) {
+      t.hours = 0;
+      d.day++;
+      if (d.day > months[d.month - 1]) {
+        d.day = 1;
+        d.month++;
+        if (d.month > 12) {
+          d.month = 1;
+          d.year++;
         }
       }
     }
   }
 }
 
-void updateSeconds(date *d, time *t) {
+void updateSeconds() {
   unsigned long currentTime = millis();
   if (currentTime - lastTime >= 1000) {
     lastTime = currentTime;
-    t->seconds++;
+    t.seconds++;
   }
-  if(t->seconds == 60) {
-    t->seconds = 0;
-    updateTime(d,t);
+  if(t.seconds >= 60) {
+    t.seconds -= 60;
+    updateTime();
   } 
 }
 
 
-void displaySeconds(time t) {
+void displaySeconds() {
   lcd.setCursor(12, 1);
   if (t.seconds < 10) {
     lcd.print("0");
@@ -120,7 +166,7 @@ void displaySeconds(time t) {
   lcd.print(t.seconds);
 }
 
-void displayDateTime(date d, time t) {
+void displayDateTime() {
   lcd.clear();
   lcd.print("Date: ");
   if (d.day < 10) {
@@ -146,7 +192,7 @@ void displayDateTime(date d, time t) {
   }
   lcd.print(t.minutes);
   lcd.print(":");
-  displaySeconds(t);
+  displaySeconds();
 }
 
 void playSong() {
